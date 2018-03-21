@@ -20,7 +20,7 @@ import java.util.Date;
 
 public class TimeLineView extends View {
     private static final String TAG = "TimeLineView";
-    private static final long LONG_PRESS_TIME = 2000;
+    private static final long LONG_PRESS_TIME = 1500;
     private int measureWidth;
     private int measureHeight;
     /**
@@ -41,17 +41,13 @@ public class TimeLineView extends View {
     private boolean isSelectingTime;
     private Date date;
     private long currentTime;
-    private float selectPosition;
-
     private OnTimeChangeListener mOnTimeChangeListener;
     private OnTimeSelectedListener mOnTimeSelectedListener;
-    private long selectTime;
     private long startTime;
     private float startY;
     private Paint textPaint;
     private String currentTimeString;
     private boolean isPress;
-    private boolean isPlaying;
 
     public TimeLineView(Context context) {
         this(context,null);
@@ -138,7 +134,7 @@ public class TimeLineView extends View {
     }
 
     private void drawTimeText(Canvas canvas) {
-        if(true && currentTimeString != null){
+        if(isPress && currentTimeString != null){
             canvas.drawText(currentTimeString, (float) (currentPosition-50*2.5/2),startY/2,textPaint);
         }
     }
@@ -190,7 +186,7 @@ public class TimeLineView extends View {
                 startX = event.getX();
                 Log.d(TAG,"onTouchEvent MotionEvent = ACTION_DOWN event.getX() = "+currentPosition);
                 mOnTimeChangeListener.onTimeChange(currentTime,currentTimeString);
-                postInvalidate();
+                invalidate();
                 break;
             case MotionEvent.ACTION_MOVE:
                 if(isLongPressed(startX,event.getX(),event.getDownTime(),event.getEventTime(),LONG_PRESS_TIME)){
@@ -203,10 +199,12 @@ public class TimeLineView extends View {
                 }else {
                     mOnTimeChangeListener.onTimeChange(currentTime,currentTimeString);
                 }
-                postInvalidate();
+                invalidate();
                 break;
             case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
                 isPress = false;
+                invalidate();
                 if(isSelectingTime){
                     isSelectingTime = false;
                     //手指放开时，切换到原来24小时显示模式 开始播放
@@ -255,13 +253,32 @@ public class TimeLineView extends View {
     }
 
     private int transTimeToPosition(long time){
-        long playedTime = time - dayMilliSeconds(date);
-        return (int) (playedTime * measureWidth / 24*60*60*1000f);
+        long playedTime = time - dayMilliSeconds(new Date(time));
+        return (int) (playedTime * measureWidth / (24*60*60*1000f));
     }
 
     private String getTimeFormatString(long time){
         SimpleDateFormat format = new SimpleDateFormat("HH:mm");
         return format.format(new Date(time));
+    }
+
+    /**
+     * 设置播放时间
+     * @param time
+     */
+    public void setPlayerCurrentTime(long time){
+        currentTime = time;
+        currentPosition = transTimeToPosition(currentTime);
+    }
+
+    /**
+     * 跳到指定时间
+     * @param time
+     */
+    public void scrollTo(long time){
+        currentTime = time;
+        currentPosition = transTimeToPosition(currentTime);
+        invalidate();
     }
 
     /**
@@ -276,6 +293,7 @@ public class TimeLineView extends View {
         cal.set(Calendar.MILLISECOND, 0);
         return cal.getTimeInMillis();
     }
+
 
 
     interface OnTimeChangeListener{
